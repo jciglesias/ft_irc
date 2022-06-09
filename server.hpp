@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/09 11:26:56 by jiglesia         ###   ########.fr       //
+//   Updated: 2022/06/09 13:17:49 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -28,8 +28,6 @@
 class Server{
 private:
 	std::vector<User>	_users;
-//	User				_users[10];
-	int					_n_users;
 	int					_port;
 	int					_sock;
 	struct pollfd		_pfd;
@@ -40,7 +38,7 @@ private:
 	std::string			client_ip;
 
 public:
-	Server(int port, int sock) : _n_users(0), _port(port), _sock(sock){
+	Server(int port, int sock) : _port(port), _sock(sock){
 		_pfd.fd = _sock;
 		_pfd.events = POLLIN;
 		memset(&_address, 0, sizeof(_address));
@@ -64,11 +62,10 @@ public:
 				catch (std::exception &e){
 					std::cerr << "Could not accept user" << std::endl;
 				}
-				std::cout << "Accepted new client @ " << _users[_n_users].getIP() << ":" << _users[_n_users].getPort() << std::endl;
-				_n_users++;
+				std::cout << "Accepted new client @ " << _users.back().getIP() << ":" << _users.back().getPort() << std::endl;
 			}
 			else{
-				for (int i = 0; i < _n_users; i++){
+				for (unsigned long i = 0; i < _users.size(); i++){
 					_users[i].u_poll(100);
 					if (_users[i].getRevents() == POLLIN){
 						memset(_buffer, 0, BUFFERLEN);
@@ -78,16 +75,14 @@ public:
 							std::cerr << "Could not receive" << std::endl;
 							return 1;
 						}
-//					if (bytes_received == 0)
 						if (_buffer[bytes_received-1] == '\n') {
 							_buffer[bytes_received-1] = 0;
 						}
 						std::cout << "Client message : " << _buffer << std::endl;
 						if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
 							std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
-							_n_users--;
 							_users.erase(_users.begin() + i);
-							if (_n_users == 0){
+							if (_users.size() == 0){
 								std::cout << "Shutting down socket." << std::endl;
 								return 0;
 							}

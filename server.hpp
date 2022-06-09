@@ -1,12 +1,12 @@
 // ************************************************************************** //
 //                                                                            //
 //                                                        :::      ::::::::   //
-//   server.hpp                                         :+:      :+:    :+:   //
+/*   server.hpp                                         :+:      :+:    :+:   */
 //                                                    +:+ +:+         +:+     //
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/09 13:17:49 by jiglesia         ###   ########.fr       //
+/*   Updated: 2022/06/09 17:38:37 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -18,10 +18,13 @@
 //# include <stdlib.h>
 //# include <sys/socket.h>
 //# include <arpa/inet.h>
-//# include <string>
+# include <cstring>
 # include <sstream>
 //# include <exception>
 # include "user.hpp"
+
+# define GREEN "\e[32m"
+# define RESET "\e[0m"
 
 # define BUFFERLEN 1024
 
@@ -38,6 +41,34 @@ private:
 	std::string			client_ip;
 
 public:
+	
+	void getNames(std::string buffer, int index) {
+		char*	str = const_cast<char *>(buffer.c_str());
+		if (!strncmp(str, "CAP LS 302", 10))
+		{
+			std::string	nickName;
+			std::string	userName;
+			
+			char* delimit = strchr(str + 17, '\n');
+		/*	std::cout << '[' << delimit[-2] << ']' << std::endl;
+			std::cout << '[' << delimit[-1] << ']' << std::endl;
+			std::cout << '[' << delimit[0] << ']' << std::endl;
+			std::cout << '[' << delimit[1] << ']' << std::endl;
+			std::cout << '[' << delimit[2] << ']' << std::endl;
+			std::cout << '[' << delimit[3] << ']' << std::endl;
+			std::cout << '[' << delimit[4] << ']' << std::endl;*/
+			delimit[-1] = '\0';
+			nickName = str + 17;
+			
+			delimit = strstr(delimit + 1, "USER ");
+			char* str = strstr(delimit + 6, " 0 * :");
+			*str = '\0';
+			userName = delimit + 5;
+			
+			this->_users[index].setName(nickName, userName);
+		}
+	}
+	
 	Server(int port, int sock) : _port(port), _sock(sock){
 		_pfd.fd = _sock;
 		_pfd.events = POLLIN;
@@ -46,7 +77,10 @@ public:
 		_address.sin_port = htons(_port);
 		_bind_value = bind(_sock, (struct sockaddr *)&_address, sizeof(_address));
 		if (_bind_value < 0)
+		{
+			std::cout << "could not bind\n";
 			throw std::exception();
+		}
 		_listen_value = listen(_sock, 1);
 		if (_listen_value < 0)
 			throw std::exception();
@@ -78,7 +112,20 @@ public:
 						if (_buffer[bytes_received-1] == '\n') {
 							_buffer[bytes_received-1] = 0;
 						}
-						std::cout << "Client message : " << _buffer << std::endl;
+						if (_users[i].getFirstMsg() == false)
+						{
+							getNames(_buffer, i);
+						/*	if (_users[i].occurName() == true)
+							{
+								std::cout << _users[i].userName << " user name already used \n"; 
+								_users[i].erase(_users.begin() + i);
+							}
+							*/
+						}
+						else {
+						//std::cout << "Client message : " << _buffer << std::endl;
+
+						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl;
 						if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
 							std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
 							_users.erase(_users.begin() + i);
@@ -87,6 +134,7 @@ public:
 								return 0;
 							}
 							break ;
+						}
 						}
 						// 6 send
 						std::stringstream stream;

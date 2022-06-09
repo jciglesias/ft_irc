@@ -1,12 +1,12 @@
 // ************************************************************************** //
 //                                                                            //
 //                                                        :::      ::::::::   //
-//   user.hpp                                           :+:      :+:    :+:   //
+/*   user.hpp                                           :+:      :+:    :+:   */
 //                                                    +:+ +:+         +:+     //
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:59:36 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/09 10:53:19 by jiglesia         ###   ########.fr       //
+/*   Updated: 2022/06/09 16:43:51 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -29,6 +29,9 @@ private:
 	socklen_t			_addrlen;
 	struct pollfd		_pfd;
 	std::string			_ip;
+	std::string			_nickName;
+	std::string			_userName;
+	bool				_firstMsg;
 public:
 	User() : _sock(0), _port(0) {}
 	User(int sock) {
@@ -41,12 +44,22 @@ public:
 		_pfd.events = POLLIN;
 		_ip = inet_ntoa(_address.sin_addr);
 		_port = ntohs(_address.sin_port);
+		_firstMsg = false;
 	}
 	~User(){}
 	std::string getIP() {return _ip;}
+	void		setName(std::string nick, std::string user)
+	{
+		this->_nickName = nick;
+		this->_userName = user;
+		this->_firstMsg = true;
+	}
 	int getfd(){return _pfd.fd;}
 	short getRevents(){return _pfd.revents;}
 	int getPort() {return _port;}
+	std::string getNickName() {return _nickName;}
+	std::string getUserName() {return _userName;}
+	bool getFirstMsg() {return _firstMsg;}
 	int u_poll(int time){ return poll(&_pfd, 1, time); }
 };
 

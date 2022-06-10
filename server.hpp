@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/09 17:38:37 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/10 16:30:10 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -22,6 +22,7 @@
 # include <sstream>
 //# include <exception>
 # include "user.hpp"
+# include "channel.hpp"
 
 # define GREEN "\e[32m"
 # define RESET "\e[0m"
@@ -39,9 +40,26 @@ private:
 	int 				_listen_value;
     char				_buffer[BUFFERLEN];
 	std::string			client_ip;
+	std::vector<Channel>	_channel;
 
 public:
 	
+	void printChannels(int userIndex)
+	{
+		std::stringstream ss;
+
+		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
+			ss << "#" << it->getName() << std::endl;
+
+		std::string response = ss.str();
+		int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
+		if (bytes_sent < 0)
+		{
+			std::cerr << "could not send channels list\n";
+			return;
+		}
+	}
+
 	void getNames(std::string buffer, int index) {
 		char*	str = const_cast<char *>(buffer.c_str());
 		if (!strncmp(str, "CAP LS 302", 10))
@@ -50,13 +68,6 @@ public:
 			std::string	userName;
 			
 			char* delimit = strchr(str + 17, '\n');
-		/*	std::cout << '[' << delimit[-2] << ']' << std::endl;
-			std::cout << '[' << delimit[-1] << ']' << std::endl;
-			std::cout << '[' << delimit[0] << ']' << std::endl;
-			std::cout << '[' << delimit[1] << ']' << std::endl;
-			std::cout << '[' << delimit[2] << ']' << std::endl;
-			std::cout << '[' << delimit[3] << ']' << std::endl;
-			std::cout << '[' << delimit[4] << ']' << std::endl;*/
 			delimit[-1] = '\0';
 			nickName = str + 17;
 			
@@ -75,15 +86,21 @@ public:
 		memset(&_address, 0, sizeof(_address));
 		_address.sin_family = AF_INET;
 		_address.sin_port = htons(_port);
+		
 		_bind_value = bind(_sock, (struct sockaddr *)&_address, sizeof(_address));
 		if (_bind_value < 0)
 		{
 			std::cout << "could not bind\n";
 			throw std::exception();
 		}
+		
 		_listen_value = listen(_sock, 1);
 		if (_listen_value < 0)
 			throw std::exception();
+		
+		Channel	Default("Default Channel", 0);
+		this->_channel.push_back(Default);
+
 	}
 	~Server(){}
 	int run(){
@@ -92,6 +109,7 @@ public:
 			if (_pfd.revents == POLLIN){
 				try {
 					_users.push_back(User(_sock));
+					this->_channel[0].addUser(this->_users.back());
 				}
 				catch (std::exception &e){
 					std::cerr << "Could not accept user" << std::endl;
@@ -125,7 +143,12 @@ public:
 						else {
 						//std::cout << "Client message : " << _buffer << std::endl;
 
-						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl;
+						std::stringstream stream;
+						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
+						stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
+						std::string msg = stream.str();
+						this->_channel[0].print(msg);
+						
 						if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
 							std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
 							_users.erase(_users.begin() + i);
@@ -135,16 +158,17 @@ public:
 							}
 							break ;
 						}
+						if (!strncmp(_buffer, "LIST", 4))
+						{
+							printChannels(i);
+						}
 						}
 						// 6 send
-						std::stringstream stream;
-						stream << "Hello client at " << _users[i].getIP() << ":" << _users[i].getPort() << ". Your message was: \n" << std::string(_buffer) + "\n";
-						std::string response = stream.str();
-						int bytes_sent = send(_users[i].getfd(), response.c_str(), response.length(), 0);
-						if (bytes_sent < 0) {
-							std::cerr << "Could not send" << std::endl;
-							return 1;
-						}
+					//	int bytes_sent = send(_users[i].getfd(), response.c_str(), response.length(), 0);
+					//	if (bytes_sent < 0) {
+					//		std::cerr << "Could not send" << std::endl;
+					//		return 1;
+				//		}
 					}
 				}
 			}

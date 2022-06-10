@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:59:36 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/09 16:43:51 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/10 14:38:27 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -32,6 +32,7 @@ private:
 	std::string			_nickName;
 	std::string			_userName;
 	bool				_firstMsg;
+	bool				_ops;
 public:
 	User() : _sock(0), _port(0) {}
 	User(int sock) {
@@ -45,6 +46,7 @@ public:
 		_ip = inet_ntoa(_address.sin_addr);
 		_port = ntohs(_address.sin_port);
 		_firstMsg = false;
+		_ops = false;
 	}
 	~User(){}
 	std::string getIP() {return _ip;}

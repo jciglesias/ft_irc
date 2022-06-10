@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/10 16:30:10 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/10 22:08:28 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -49,7 +49,7 @@ public:
 		std::stringstream ss;
 
 		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
-			ss << "#" << it->getName() << std::endl;
+			ss << "#" << '[' << it->getName() << ']' << std::endl;
 
 		std::string response = ss.str();
 		int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
@@ -58,6 +58,48 @@ public:
 			std::cerr << "could not send channels list\n";
 			return;
 		}
+	}
+	
+	bool allowChannelName(std::string name)
+	{
+		if (name.size() == 1)
+			return (name[0] >= '0' && name[0] <= '9');
+		
+		return ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'));
+	}
+
+	int findChannel(std::string name)
+	{
+		int i = 0;
+		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
+		{
+			if (it->getName() == name)
+				return (i);
+			i++;
+		}
+		return (-1);
+	}
+
+	std::string getNameChannel(std::string buf)
+	{
+		char*	str = const_cast<char *>(buf.c_str());
+		char *delimit = strchr(str + 6, ' ');
+		if (delimit != NULL)
+			*delimit = '\0';
+		else
+		{
+			char *delimit = strchr(str + 6, '\r');
+			if (delimit != NULL)
+				*delimit = '\0';
+		}
+		
+		for (int i = 0; i < 6; i++)
+			str++;
+
+		std::string tmp(str);
+		std::string name = tmp.c_str();
+
+		return (name);
 	}
 
 	void getNames(std::string buffer, int index) {
@@ -80,6 +122,51 @@ public:
 		}
 	}
 	
+	int	getIndexChannel(std::string name)
+	{
+		int i = 0;
+		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
+		{
+			if (name == it->getName())
+				return (i);
+			i++;
+		}
+		return (-1);
+	}
+
+	void leaveChannel(User* x)
+	{
+		std::string nameChannel = x->getChannel();
+		this->_channel[findChannel(nameChannel)].deleteUser(x);
+		x->setChannel("");
+
+		std::stringstream ss;
+		ss << "You are leaved " << nameChannel << " !" << std::endl;
+		std::string out = ss.str();
+		int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
+		if (bytes_sent < 0)
+			std::cerr << "Could not send leavechannel msg" << std::endl;
+		
+	}
+
+	void joinChannel(User* x, int indexChannel)
+	{
+		std::string nameChannel = this->_channel[indexChannel].getName();
+		if (nameChannel == x->getChannel())
+		{
+			std::stringstream ss;
+			ss << "You are already in " << "#" << nameChannel << " channel!" << std::endl;
+			std::string out = ss.str();
+			int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
+			if (bytes_sent < 0)
+				std::cerr << "Could not send" << std::endl;
+			return;
+		}
+
+		leaveChannel(x);
+		this->_channel[indexChannel].addUser(x);
+	}
+
 	Server(int port, int sock) : _port(port), _sock(sock){
 		_pfd.fd = _sock;
 		_pfd.events = POLLIN;
@@ -98,10 +185,32 @@ public:
 		if (_listen_value < 0)
 			throw std::exception();
 		
-		Channel	Default("Default Channel", 0);
+		Channel	Default("Default");
 		this->_channel.push_back(Default);
 
 	}
+	
+	bool	occurName(User& x)
+	{
+		for (std::vector<User>::iterator it = this->_users.begin(); it != this->_users.end(); it++)
+		{
+			if (x.getUserName() == it->getUserName())
+				if (x.getPort() != it->getPort())
+					return (true);
+		}
+		return (false);
+	}
+	
+	void	removeUser(int indexUser)
+	{
+		std::string channel = this->_users[indexUser].getChannel();
+
+		leaveChannel(&(this->_users[indexUser]));
+		std::cout << "Client at " << this->_users[indexUser].getIP() << ":" << this->_users[indexUser].getPort() << " has disconnected." << std::endl;
+		std::vector<User>::iterator pos(&(this->_users[indexUser]));
+		this->_users.erase(pos);
+	}
+
 	~Server(){}
 	int run(){
 		while (1) {
@@ -109,7 +218,7 @@ public:
 			if (_pfd.revents == POLLIN){
 				try {
 					_users.push_back(User(_sock));
-					this->_channel[0].addUser(this->_users.back());
+					this->_channel[0].addUser(&(this->_users.back()));
 				}
 				catch (std::exception &e){
 					std::cerr << "Could not accept user" << std::endl;
@@ -127,28 +236,15 @@ public:
 							std::cerr << "Could not receive" << std::endl;
 							return 1;
 						}
-						if (_buffer[bytes_received-1] == '\n') {
+						if (_buffer[bytes_received-1] == '\n')
 							_buffer[bytes_received-1] = 0;
-						}
 						if (_users[i].getFirstMsg() == false)
 						{
 							getNames(_buffer, i);
-						/*	if (_users[i].occurName() == true)
-							{
-								std::cout << _users[i].userName << " user name already used \n"; 
-								_users[i].erase(_users.begin() + i);
-							}
-							*/
+							if (occurName(this->_users[i]) == true)
+								removeUser(i);
 						}
 						else {
-						//std::cout << "Client message : " << _buffer << std::endl;
-
-						std::stringstream stream;
-						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
-						stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
-						std::string msg = stream.str();
-						this->_channel[0].print(msg);
-						
 						if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
 							std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
 							_users.erase(_users.begin() + i);
@@ -158,22 +254,42 @@ public:
 							}
 							break ;
 						}
-						if (!strncmp(_buffer, "LIST", 4))
+						else if (!strncmp(_buffer, "LIST", 4))
 						{
 							printChannels(i);
 						}
+						else if (!strncmp(_buffer, "JOIN #", 6))
+						{
+							std::string nameChannel(getNameChannel(_buffer));
+							if (allowChannelName(nameChannel) == true)
+							{
+								int nbChannel = findChannel(nameChannel);
+								if (nbChannel < 0)
+								{
+									this->_channel.push_back(nameChannel);
+									joinChannel(&(this->_users[i]), this->_channel.size() - 1);
+								}
+								else
+									joinChannel(&(this->_users[i]), nbChannel);
+							}
 						}
-						// 6 send
-					//	int bytes_sent = send(_users[i].getfd(), response.c_str(), response.length(), 0);
-					//	if (bytes_sent < 0) {
-					//		std::cerr << "Could not send" << std::endl;
-					//		return 1;
-				//		}
+						else{ 
+						std::stringstream stream;
+						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
+						if (this->_users[i].getOperator() == true)
+							stream << "(Ops)";
+						stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
+						std::string msg = stream.str();
+						
+						int idx = getIndexChannel(this->_users[i].getChannel());
+						this->_channel[idx].print(msg);
+						}
 					}
 				}
 			}
 		}
 		// 7 goto 5
+	}
 	}
 };
 

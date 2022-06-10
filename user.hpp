@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:59:36 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/10 14:38:27 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/10 21:36:06 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -33,6 +33,7 @@ private:
 	std::string			_userName;
 	bool				_firstMsg;
 	bool				_ops;
+	std::string			_channel;
 public:
 	User() : _sock(0), _port(0) {}
 	User(int sock) {
@@ -47,6 +48,7 @@ public:
 		_port = ntohs(_address.sin_port);
 		_firstMsg = false;
 		_ops = false;
+		_channel = "Default";
 	}
 	~User(){}
 	std::string getIP() {return _ip;}
@@ -56,11 +58,15 @@ public:
 		this->_userName = user;
 		this->_firstMsg = true;
 	}
+	void setOperator(bool ops) {this->_ops = ops;}
+	bool getOperator() {return this->_ops;}
+	void setChannel(std::string name) {this->_channel = name;}
+	std::string getChannel() {return this->_channel;}
 	int getfd(){return _pfd.fd;}
 	short getRevents(){return _pfd.revents;}
 	int getPort() {return _port;}
-	std::string getNickName() {return _nickName;}
-	std::string getUserName() {return _userName;}
+	std::string getNickName() {return this->_nickName;}
+	std::string getUserName() {return this->_userName;}
 	bool getFirstMsg() {return _firstMsg;}
 	int u_poll(int time){ return poll(&_pfd, 1, time); }
 };

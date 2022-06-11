@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/11 11:02:13 by jiglesia         ###   ########.fr       //
+//   Updated: 2022/06/11 11:35:48 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -57,11 +57,11 @@ public:
 			return;
 		}
 	}
-	
+
 	bool allowChannelName(std::string name){
 		if (name.size() == 1)
 			return (name[0] >= '0' && name[0] <= '9');
-		
+
 		return ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'));
 	}
 
@@ -85,7 +85,7 @@ public:
 			if (delimit != NULL)
 				*delimit = '\0';
 		}
-		
+
 		for (int i = 0; i < 6; i++)
 			str++;
 
@@ -113,7 +113,7 @@ public:
 			this->_users[index].setName(nickName, userName);
 		}
 	}
-	
+
 	int	getIndexChannel(std::string name){
 		int i = 0;
 		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++){
@@ -135,7 +135,7 @@ public:
 		int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
 		if (bytes_sent < 0)
 			std::cerr << "Could not send leavechannel msg" << std::endl;
-		
+
 	}
 
 	void joinChannel(User* x, int indexChannel){
@@ -169,12 +169,12 @@ public:
 		_listen_value = listen(_sock, 1);
 		if (_listen_value < 0)
 			throw std::exception();
-		
+
 		Channel	Default("Default");
 		this->_channel.push_back(Default);
 
 	}
-	
+
 	bool	occurName(User& x){
 		for (std::vector<User>::iterator it = this->_users.begin(); it != this->_users.end(); it++)
 		{
@@ -184,7 +184,7 @@ public:
 		}
 		return (false);
 	}
-	
+
 	void	removeUser(int indexUser){
 		std::string channel = this->_users[indexUser].getChannel();
 
@@ -198,7 +198,7 @@ public:
 	void addUser(){
 		try {
 			_users.push_back(User(_sock));
-			this->_channel[0].addUser(this->_users.back());
+			this->_channel[0].addUser(&this->_users.back());
 		}
 		catch (std::exception &e){
 			std::cerr << "Could not accept user" << std::endl;
@@ -232,7 +232,6 @@ public:
 					std::cout << "Shutting down socket." << std::endl;
 					return 0;
 				}
-				break ;
 			}
 			else if (!strncmp(_buffer, "LIST", 4)){
 				printChannels(i);
@@ -249,7 +248,7 @@ public:
 						joinChannel(&(this->_users[i]), nbChannel);
 				}
 			}
-			else{ 
+			else{
 	  		std::stringstream stream;
 		  	std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
 			  if (this->_users[i].getOperator() == true)

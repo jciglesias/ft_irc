@@ -6,7 +6,7 @@
 /*   By: nayache <nayache@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/10 14:32:28 by nayache           #+#    #+#             */
-/*   Updated: 2022/06/10 15:55:14 by nayache          ###   ########.fr       */
+//   Updated: 2022/06/10 17:26:17 by jiglesia         ###   ########.fr       //
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,11 +21,11 @@ class Channel
 
 		Channel(std::string name, int fd) : _name(name), _fd(fd) {}
 		~Channel() {}
-		
+
 		void addUser(User x)
 		{
 			std::cout << "user added :" << x.getNickName() << std::endl; //
-			
+
 			std::stringstream stream;
 			stream << "Hello client at " << x.getIP() << ":" << x.getPort() << ". Your message was: \n" << std::string("WELCOME") + "\n";
 			std::string response = stream.str();
@@ -34,10 +34,10 @@ class Channel
 				std::cerr << "Could not send" << std::endl;
 				return;
 			}
-			
+
 			this->_users.push_back(x);
 		}
-
+	int getfd(){return _fd;}
 		void print(std::string msg) {
 			//std::cout << GREEN << _users[i].getUserName() << " : " << RESET << _buffer << std::endl;
 
@@ -59,7 +59,7 @@ class Channel
 
 		std::string			_name;
 		std::vector<User>	_users;
-		int					_size;
+//		int					_size;
 		int					_fd;
 
 };

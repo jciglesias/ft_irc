@@ -24,9 +24,7 @@
 # include <unistd.h>
 # include "user.hpp"
 # include "channel.hpp"
-
-# define GREEN "\e[32m"
-# define RESET "\e[0m"
+# include "color.hpp"
 
 # define BUFFERLEN 1024
 
@@ -220,7 +218,7 @@ public:
 		std::string str = this->getline(_users[i].getfd());
 		// 5 recv
 		if (_users[i].getFirstMsg() == false){
-			getNames(str.str(), i);
+			getNames(str.c_str(), i);
 			if (occurName(this->_users[i]) == true)
 			removeUser(i);
 		  }

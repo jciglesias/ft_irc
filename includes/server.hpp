@@ -208,11 +208,13 @@ public:
 
 	std::string getline(int fd){
 		std::stringstream stream;
-		memset(_buffer, 0, BUFFERLEN);
-		int bytes_read = read(fd, _buffer, BUFFERLEN - 1);
-		if (_buffer[bytes_read - 1] == '\n')
-			_buffer[bytes_read - 1] = 0;
-		stream << _buffer;
+		do {
+			memset(_buffer, 0, BUFFERLEN);
+			int bytes_read = read(fd, _buffer, BUFFERLEN - 1);
+			if (_buffer[bytes_read - 1] == '\n')
+				_buffer[bytes_read - 1] = 0;
+			stream << _buffer;
+		} while (stream.str().length() == BUFFERLEN);
 		return stream.str();
 	}
 

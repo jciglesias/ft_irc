@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/10 22:08:28 by nayache          ###   ########.fr       */
+//   Updated: 2022/06/11 11:02:13 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -21,6 +21,7 @@
 # include <cstring>
 # include <sstream>
 //# include <exception>
+# include <unistd.h>
 # include "user.hpp"
 # include "channel.hpp"
 
@@ -43,9 +44,7 @@ private:
 	std::vector<Channel>	_channel;
 
 public:
-	
-	void printChannels(int userIndex)
-	{
+	void printChannels(int userIndex){
 		std::stringstream ss;
 
 		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
@@ -53,26 +52,22 @@ public:
 
 		std::string response = ss.str();
 		int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
-		if (bytes_sent < 0)
-		{
+		if (bytes_sent < 0){
 			std::cerr << "could not send channels list\n";
 			return;
 		}
 	}
 	
-	bool allowChannelName(std::string name)
-	{
+	bool allowChannelName(std::string name){
 		if (name.size() == 1)
 			return (name[0] >= '0' && name[0] <= '9');
 		
 		return ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'));
 	}
 
-	int findChannel(std::string name)
-	{
+	int findChannel(std::string name){
 		int i = 0;
-		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
-		{
+		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++){
 			if (it->getName() == name)
 				return (i);
 			i++;
@@ -80,14 +75,12 @@ public:
 		return (-1);
 	}
 
-	std::string getNameChannel(std::string buf)
-	{
+	std::string getNameChannel(std::string buf){
 		char*	str = const_cast<char *>(buf.c_str());
 		char *delimit = strchr(str + 6, ' ');
 		if (delimit != NULL)
 			*delimit = '\0';
-		else
-		{
+		else{
 			char *delimit = strchr(str + 6, '\r');
 			if (delimit != NULL)
 				*delimit = '\0';
@@ -104,29 +97,26 @@ public:
 
 	void getNames(std::string buffer, int index) {
 		char*	str = const_cast<char *>(buffer.c_str());
-		if (!strncmp(str, "CAP LS 302", 10))
-		{
+		if (!strncmp(str, "CAP LS 302", 10)){
 			std::string	nickName;
 			std::string	userName;
-			
+
 			char* delimit = strchr(str + 17, '\n');
 			delimit[-1] = '\0';
 			nickName = str + 17;
-			
+
 			delimit = strstr(delimit + 1, "USER ");
 			char* str = strstr(delimit + 6, " 0 * :");
 			*str = '\0';
 			userName = delimit + 5;
-			
+
 			this->_users[index].setName(nickName, userName);
 		}
 	}
 	
-	int	getIndexChannel(std::string name)
-	{
+	int	getIndexChannel(std::string name){
 		int i = 0;
-		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
-		{
+		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++){
 			if (name == it->getName())
 				return (i);
 			i++;
@@ -134,8 +124,7 @@ public:
 		return (-1);
 	}
 
-	void leaveChannel(User* x)
-	{
+	void leaveChannel(User* x){
 		std::string nameChannel = x->getChannel();
 		this->_channel[findChannel(nameChannel)].deleteUser(x);
 		x->setChannel("");
@@ -149,8 +138,7 @@ public:
 		
 	}
 
-	void joinChannel(User* x, int indexChannel)
-	{
+	void joinChannel(User* x, int indexChannel){
 		std::string nameChannel = this->_channel[indexChannel].getName();
 		if (nameChannel == x->getChannel())
 		{
@@ -173,14 +161,11 @@ public:
 		memset(&_address, 0, sizeof(_address));
 		_address.sin_family = AF_INET;
 		_address.sin_port = htons(_port);
-		
 		_bind_value = bind(_sock, (struct sockaddr *)&_address, sizeof(_address));
-		if (_bind_value < 0)
-		{
+		if (_bind_value < 0){
 			std::cout << "could not bind\n";
 			throw std::exception();
 		}
-		
 		_listen_value = listen(_sock, 1);
 		if (_listen_value < 0)
 			throw std::exception();
@@ -190,8 +175,7 @@ public:
 
 	}
 	
-	bool	occurName(User& x)
-	{
+	bool	occurName(User& x){
 		for (std::vector<User>::iterator it = this->_users.begin(); it != this->_users.end(); it++)
 		{
 			if (x.getUserName() == it->getUserName())
@@ -201,8 +185,7 @@ public:
 		return (false);
 	}
 	
-	void	removeUser(int indexUser)
-	{
+	void	removeUser(int indexUser){
 		std::string channel = this->_users[indexUser].getChannel();
 
 		leaveChannel(&(this->_users[indexUser]));
@@ -212,6 +195,74 @@ public:
 	}
 
 	~Server(){}
+	void addUser(){
+		try {
+			_users.push_back(User(_sock));
+			this->_channel[0].addUser(this->_users.back());
+		}
+		catch (std::exception &e){
+			std::cerr << "Could not accept user" << std::endl;
+		}
+		std::cout << "Accepted new client @ " << _users.back().getIP() << ":" << _users.back().getPort() << std::endl;
+	}
+
+	std::string getline(int fd){
+		std::stringstream stream;
+		memset(_buffer, 0, BUFFERLEN);
+		int bytes_read = read(fd, _buffer, BUFFERLEN - 1);
+		if (_buffer[bytes_read - 1] == '\n')
+			_buffer[bytes_read - 1] = 0;
+		stream << _buffer;
+		return stream.str();
+	}
+
+	int checkfd(int i){
+		std::string str = this->getline(_users[i].getfd());
+		// 5 recv
+		if (_users[i].getFirstMsg() == false){
+			getNames(_buffer, i);
+			if (occurName(this->_users[i]) == true)
+			removeUser(i);
+		  }
+  	else {
+			if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
+  			std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
+				_users.erase(_users.begin() + i);
+				if (_users.size() == 0){
+					std::cout << "Shutting down socket." << std::endl;
+					return 0;
+				}
+				break ;
+			}
+			else if (!strncmp(_buffer, "LIST", 4)){
+				printChannels(i);
+			}
+			else if (!strncmp(_buffer, "JOIN #", 6)){
+				std::string nameChannel(getNameChannel(_buffer));
+				if (allowChannelName(nameChannel) == true){
+					int nbChannel = findChannel(nameChannel);
+					if (nbChannel < 0){
+						this->_channel.push_back(nameChannel);
+						joinChannel(&(this->_users[i]), this->_channel.size() - 1);
+					}
+					else
+						joinChannel(&(this->_users[i]), nbChannel);
+				}
+			}
+			else{ 
+	  		std::stringstream stream;
+		  	std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
+			  if (this->_users[i].getOperator() == true)
+				  stream << "(Ops)";
+		  	stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
+		  	std::string msg = stream.str();
+				int idx = getIndexChannel(this->_users[i].getChannel());
+				this->_channel[idx].print(msg);
+				}
+    }
+		return 1;
+	}
+
 	int run(){
 		while (1) {
 			poll(&_pfd, 1, 100);
@@ -229,67 +280,12 @@ public:
 				for (unsigned long i = 0; i < _users.size(); i++){
 					_users[i].u_poll(100);
 					if (_users[i].getRevents() == POLLIN){
-						memset(_buffer, 0, BUFFERLEN);
-						// 5 recv
-						int bytes_received = recv(_users[i].getfd(), _buffer, BUFFERLEN-1, 0);
-						if (bytes_received < 0) {
-							std::cerr << "Could not receive" << std::endl;
-							return 1;
-						}
-						if (_buffer[bytes_received-1] == '\n')
-							_buffer[bytes_received-1] = 0;
-						if (_users[i].getFirstMsg() == false)
-						{
-							getNames(_buffer, i);
-							if (occurName(this->_users[i]) == true)
-								removeUser(i);
-						}
-						else {
-						if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
-							std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
-							_users.erase(_users.begin() + i);
-							if (_users.size() == 0){
-								std::cout << "Shutting down socket." << std::endl;
-								return 0;
-							}
-							break ;
-						}
-						else if (!strncmp(_buffer, "LIST", 4))
-						{
-							printChannels(i);
-						}
-						else if (!strncmp(_buffer, "JOIN #", 6))
-						{
-							std::string nameChannel(getNameChannel(_buffer));
-							if (allowChannelName(nameChannel) == true)
-							{
-								int nbChannel = findChannel(nameChannel);
-								if (nbChannel < 0)
-								{
-									this->_channel.push_back(nameChannel);
-									joinChannel(&(this->_users[i]), this->_channel.size() - 1);
-								}
-								else
-									joinChannel(&(this->_users[i]), nbChannel);
-							}
-						}
-						else{ 
-						std::stringstream stream;
-						std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
-						if (this->_users[i].getOperator() == true)
-							stream << "(Ops)";
-						stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
-						std::string msg = stream.str();
-						
-						int idx = getIndexChannel(this->_users[i].getChannel());
-						this->_channel[idx].print(msg);
-						}
+						if (!this->checkfd(i))
+							return 0;
 					}
 				}
 			}
 		}
-		// 7 goto 5
-	}
 	}
 };
 

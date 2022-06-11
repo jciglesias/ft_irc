@@ -19,7 +19,8 @@ class Channel
 {
 	public:
 
-		Channel(std::string name) : _name(name) {}
+
+    Channel(std::string name) : _name(name) {}
 		~Channel() {}
 			
 		void addUser(User* x)

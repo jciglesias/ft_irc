@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/11 11:35:48 by jiglesia         ###   ########.fr       //
+//   Updated: 2022/06/11 12:47:33 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -220,23 +220,23 @@ public:
 		std::string str = this->getline(_users[i].getfd());
 		// 5 recv
 		if (_users[i].getFirstMsg() == false){
-			getNames(_buffer, i);
+			getNames(str.str(), i);
 			if (occurName(this->_users[i]) == true)
 			removeUser(i);
 		  }
-  	else {
-			if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
-  			std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
+		else {
+			if (!str.compare(0, 4, "QUIT")){
+				std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
 				_users.erase(_users.begin() + i);
 				if (_users.size() == 0){
 					std::cout << "Shutting down socket." << std::endl;
 					return 0;
 				}
 			}
-			else if (!strncmp(_buffer, "LIST", 4)){
+			else if (!str.compare(0, 4, "LIST")){
 				printChannels(i);
 			}
-			else if (!strncmp(_buffer, "JOIN #", 6)){
+			else if (!str.compare(0, 6, "JOIN #")){
 				std::string nameChannel(getNameChannel(_buffer));
 				if (allowChannelName(nameChannel) == true){
 					int nbChannel = findChannel(nameChannel);
@@ -258,7 +258,7 @@ public:
 				int idx = getIndexChannel(this->_users[i].getChannel());
 				this->_channel[idx].print(msg);
 				}
-    }
+		}
 		return 1;
 	}
 

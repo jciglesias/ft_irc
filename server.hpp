@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/11 11:02:13 by jiglesia         ###   ########.fr       //
+/*   Updated: 2022/06/16 16:54:16 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -46,10 +46,15 @@ private:
 public:
 	void printChannels(int userIndex){
 		std::stringstream ss;
-
+		
+	//	ss << "\002====CHANNELS LIST====" << std::endl;
 		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
-			ss << "#" << '[' << it->getName() << ']' << std::endl;
-
+		{
+			ss << ":" << it->getName() << "\r\n";
+			break;
+		}
+		
+		ss << ":End of Channel list\r\n";
 		std::string response = ss.str();
 		int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
 		if (bytes_sent < 0){
@@ -59,10 +64,12 @@ public:
 	}
 	
 	bool allowChannelName(std::string name){
-		if (name.size() == 1)
-			return (name[0] >= '0' && name[0] <= '9');
+		if (name[0] != '&' && name[0] != '#')
+			return (false);
+		if (name.size() == 2)
+			return (name[1] >= '0' && name[1] <= '9');
 		
-		return ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'));
+		return ((name[1] >= 'a' && name[1] <= 'z') || (name[1] >= 'A' && name[1] <= 'Z'));
 	}
 
 	int findChannel(std::string name){
@@ -77,16 +84,16 @@ public:
 
 	std::string getNameChannel(std::string buf){
 		char*	str = const_cast<char *>(buf.c_str());
-		char *delimit = strchr(str + 6, ' ');
+		char *delimit = strchr(str + 5, ' ');
 		if (delimit != NULL)
 			*delimit = '\0';
 		else{
-			char *delimit = strchr(str + 6, '\r');
+			char *delimit = strchr(str + 5, '\r');
 			if (delimit != NULL)
 				*delimit = '\0';
 		}
 		
-		for (int i = 0; i < 6; i++)
+		for (int i = 0; i < 5; i++)
 			str++;
 
 		std::string tmp(str);
@@ -124,9 +131,9 @@ public:
 		return (-1);
 	}
 
-	void leaveChannel(User* x){
+	void leaveChannel(User* x, std::string msg){
 		std::string nameChannel = x->getChannel();
-		this->_channel[findChannel(nameChannel)].deleteUser(x);
+		this->_channel[findChannel(nameChannel)].deleteUser(x, msg);
 		x->setChannel("");
 
 		std::stringstream ss;
@@ -143,7 +150,7 @@ public:
 		if (nameChannel == x->getChannel())
 		{
 			std::stringstream ss;
-			ss << "You are already in " << "#" << nameChannel << " channel!" << std::endl;
+			ss << "You are already in " << nameChannel << " channel!" << std::endl;
 			std::string out = ss.str();
 			int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
 			if (bytes_sent < 0)
@@ -151,7 +158,7 @@ public:
 			return;
 		}
 
-		leaveChannel(x);
+		leaveChannel(x, "");
 		this->_channel[indexChannel].addUser(x);
 	}
 
@@ -169,10 +176,6 @@ public:
 		_listen_value = listen(_sock, 1);
 		if (_listen_value < 0)
 			throw std::exception();
-		
-		Channel	Default("Default");
-		this->_channel.push_back(Default);
-
 	}
 	
 	bool	occurName(User& x){
@@ -188,7 +191,7 @@ public:
 	void	removeUser(int indexUser){
 		std::string channel = this->_users[indexUser].getChannel();
 
-		leaveChannel(&(this->_users[indexUser]));
+		leaveChannel(&(this->_users[indexUser]), "");
 		std::cout << "Client at " << this->_users[indexUser].getIP() << ":" << this->_users[indexUser].getPort() << " has disconnected." << std::endl;
 		std::vector<User>::iterator pos(&(this->_users[indexUser]));
 		this->_users.erase(pos);
@@ -198,7 +201,7 @@ public:
 	void addUser(){
 		try {
 			_users.push_back(User(_sock));
-			this->_channel[0].addUser(this->_users.back());
+			this->_channel[0].addUser(&(this->_users.back()));
 		}
 		catch (std::exception &e){
 			std::cerr << "Could not accept user" << std::endl;
@@ -218,12 +221,19 @@ public:
 
 	int checkfd(int i){
 		std::string str = this->getline(_users[i].getfd());
+		std::cout << str << std::endl; // juste pour voir les envoi du client
 		// 5 recv
-		if (_users[i].getFirstMsg() == false){
+ 		if (_users[i].getFirstMsg() == false)
+		{
 			getNames(_buffer, i);
 			if (occurName(this->_users[i]) == true)
-			removeUser(i);
-		  }
+				removeUser(i);
+			else
+			{
+				std::string msg = ":127.0.0.1 001 " + this->_users[i].getNickName() + " :Welcome to the Internet Relay Network\r\n";
+				int bytes_sent = send(this->_users[i].getfd(), msg.c_str(), msg.length(), 0);
+			}
+		}
   	else {
 			if (_buffer[0] == 'Q' && _buffer[1] == 'U' && _buffer[2] == 'I' && _buffer[3] == 'T'){
   			std::cout << "Client at " << _users[i].getIP() << ":" << _users[i].getPort() << " has disconnected." << std::endl;
@@ -232,9 +242,9 @@ public:
 					std::cout << "Shutting down socket." << std::endl;
 					return 0;
 				}
-				break ;
 			}
 			else if (!strncmp(_buffer, "LIST", 4)){
+				std::cout << _buffer << std::endl;
 				printChannels(i);
 			}
 			else if (!strncmp(_buffer, "JOIN #", 6)){
@@ -248,18 +258,47 @@ public:
 					else
 						joinChannel(&(this->_users[i]), nbChannel);
 				}
+
+				return (1);
+			}
+			else if (!strncmp(_buffer, "PART #", 6))
+			{
+				std::stringstream ss;
+				std::string msg;
+				std::string buf(_buffer);
+				char* str = const_cast<char *>(buf.c_str());
+				char* delimit  = strchr(str + 6, ' ');
+
+				*delimit = '\0';
+				std::string channelName(str + 5);
+				int idx = getIndexChannel(channelName);
+				if (idx == -1)
+				{
+					ss << "you are not in " << channelName << std::endl;
+					msg = ss.str();
+					int bytes_sent = send(this->_users[i].getfd(), msg.c_str(), msg.length(), 0);
+					if (bytes_sent < 0) {
+						std::cerr << "Could not send" << std::endl;
+					return (1);
+					}
+				}
+				else
+				{
+					msg = delimit + 2;
+					leaveChannel(&(this->_users[i]), msg);
+				}
+				
 			}
 			else{ 
 	  		std::stringstream stream;
-		  	std::cout << GREEN << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << RESET << _buffer << std::endl; // to server
-			  if (this->_users[i].getOperator() == true)
-				  stream << "(Ops)";
-		  	stream << _users[i].getUserName() << "(" << _users[i].getNickName() << ") : " << _buffer << std::endl; // to channel
-		  	std::string msg = stream.str();
+			 // if (this->_users[i].getOperator() == true)
+			//	  stream << "(Ops)";
+		  		stream << _buffer << std::endl; // to channel
+		  		std::string msg = stream.str();
 				int idx = getIndexChannel(this->_users[i].getChannel());
 				this->_channel[idx].print(msg);
 				}
-    }
+   	}
 		return 1;
 	}
 
@@ -269,7 +308,6 @@ public:
 			if (_pfd.revents == POLLIN){
 				try {
 					_users.push_back(User(_sock));
-					this->_channel[0].addUser(&(this->_users.back()));
 				}
 				catch (std::exception &e){
 					std::cerr << "Could not accept user" << std::endl;

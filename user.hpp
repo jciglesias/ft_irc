@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:59:36 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/16 13:54:14 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/24 17:15:52 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -52,6 +52,15 @@ public:
 	}
 	~User(){}
 	std::string getIP() {return _ip;}
+	std::string getId()
+	{
+		return (getNickName() + "!~" + getNickName() + "@" + getIP());
+	}
+	std::string getIdd()
+	{
+		return (getNickName() + "!~" + getNickName() + "@localhost");
+	}
+
 	void		setName(std::string nick, std::string user)
 	{
 		this->_nickName = nick;

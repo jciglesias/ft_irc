@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/16 16:54:16 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/24 17:30:13 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -146,6 +146,7 @@ public:
 	}
 
 	void joinChannel(User* x, int indexChannel){
+		std::cout << "joinchannel()\n";
 		std::string nameChannel = this->_channel[indexChannel].getName();
 		if (nameChannel == x->getChannel())
 		{
@@ -158,7 +159,7 @@ public:
 			return;
 		}
 
-		leaveChannel(x, "");
+		//leaveChannel(x, "");
 		this->_channel[indexChannel].addUser(x);
 	}
 
@@ -296,7 +297,7 @@ public:
 		  		stream << _buffer << std::endl; // to channel
 		  		std::string msg = stream.str();
 				int idx = getIndexChannel(this->_users[i].getChannel());
-				this->_channel[idx].print(msg);
+				this->_channel[idx].sendToUsers(msg, 0);
 				}
    	}
 		return 1;

@@ -6,7 +6,7 @@
 /*   By: nayache <nayache@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/10 14:32:28 by nayache           #+#    #+#             */
-/*   Updated: 2022/06/16 14:40:50 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/24 17:30:29 by nayache          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ class Channel
 	public:
 
 
-    Channel(std::string name) : _name(name) {}
+    Channel(std::string name) : _name(name), _topic("Default Topic"){}
 		~Channel() {}
 			
 		void addUser(User* x)
@@ -37,28 +37,66 @@ class Channel
 				x->setOperator(false);
 			
 			std::string response;
-			if (x->getNickName() == "dan")
+			if (this->_users.size() == 1)
 			{
-				response = ":" + x->getNickName() + "!~" + x->getNickName() + "@" + x->getIP() + " JOIN " + this->_name + "\r\n"
-				+ ":42-IRC-SERVER MODE " + this->_name + " +nt\r\n"
-				+ ":42-IRC-SERVER 353 " + x->getNickName() + " = " + this->_name + " :@" + x->getNickName() + "\r\n";
-				+ ":42-IRC-SERVER 366 " + x->getNickName() + " " + this->_name + " :End on /NAMES list.\r\n";
-				std::cout << response;
+				//-----JOIN---
+				response = ":" + x->getId() + " JOIN " + this->_name + "\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+				
+				//----RPL_TOPIC/RPL_NOTOPIC------
+				response = ":42-IRC 332 " + x->getNickName() + " " + this->_name + " :" + this->_topic + "\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+		
+				//---MODE(facultatif)---		
+				response = ":42-IRC MODE " + this->_name + " +nt\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+				
+				//----RPL_NAMEREPLY------
+				response = ":42-IRC 353 " + x->getNickName() + " = " + this->_name + " :";
+				for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
+				{
+					if ((*it)->getOperator() == true)
+						response += "@" + (*it)->getNickName() + " ";
+					else
+						response += (*it)->getNickName() + " ";
+				}
+				response += "\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+				
+				//----RPL_ENDNAMES------
+				response = ":42-IRC 366 " + x->getNickName() + " " + this->_name + " :End on /NAMES list.\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
 			}
 			else
 			{
-				std::cout << "ICI\n";
-				response = ":" + x->getNickName() + "!~" + x->getNickName() + "@" + x->getIP() + " JOIN " + this->_name + "\r\n"
-				+ ":42-IRC-SERVER 332 " + x->getNickName() + " " + this->_name + " :" + this->_topic + "\r\n"
-				+ ":42-IRC-SERVER 333 " + x->getNickName() + " " + this->_name + " " + this->_users[0]->getNickName() + "!~" + this->_users[0]->getNickName() + "@" + this->_users[0]->getIP() + "\r\n"
-				+ ":42-IRC-SERVER 353 " + x->getNickName() + " @ " + this->_name + " :" + x->getNickName() + " @" + this->_users[0]->getNickName() + "\r\n";
-				+ ":42-IRC-SERVER 366 " + x->getNickName() + " " + this->_name + " :End on /NAMES list.\r\n";
-				std::cout << response;
-			}
+				////----JOIN-----
+				response = ":" + x->getIdd() + " JOIN " + this->_name + "\r\n";
+				sendToUsers(response, 0);
+			//	send(x->getfd(), response.c_str(), response.length(), 0);
+				
+				//-----RPL_TOPIC/RPL_NOTOPIC-------
+				response = ":42IRC 332 " + x->getNickName() + " " + this->_name + " :" + this->_topic + "\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
 
-			int bytes_sent = send(x->getfd(), response.c_str(), response.length(), 0);
-			if (bytes_sent < 0)
-				std::cerr << "Could not sent\n";
+				//-----RPL_WHOTIME------
+				response = ":42IRC 333 " + x->getNickName() + " " + this->_name + " " + this->_users[0]->getId() + "\r\n";
+
+				//----RPL_NAMEREPLY------
+				response = ":42IRC 353 " + x->getNickName() + " @ " + this->_name + " :";
+				for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
+				{
+					if ((*it)->getOperator() == true)
+						response += "@" + (*it)->getNickName() + " ";
+					else
+						response += (*it)->getNickName() + " ";
+				}
+				response += "\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+				
+				//----RPL_ENDNAMES------
+				response = ":42-IRC 366 " + x->getNickName() + " " + this->_name + " :End on /NAMES list.\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
+			}
 		}
 		
 		void deleteUser(User* x, std::string msg)
@@ -68,14 +106,6 @@ class Channel
 				return;
 			
 			this->_users.erase(idxUser);
-			
-			std::string finalMsg;	
-			if (msg != "")
-				finalMsg = x->getUserName() + " leave channel \"" + msg + "\"\n";
-			else
-				finalMsg = x->getUserName() + " leave channel\n";
-			
-			print(finalMsg);
 		}
 
 		std::vector<User*>::iterator userExist(std::string userName)
@@ -88,18 +118,15 @@ class Channel
 			return (this->_users.end());
 		}
 
-		void print(std::string msg) {
+		void sendToUsers(std::string msg, User* without) {
 
-			for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++) {
-				std::string imsg = "332";
-				int bytes_sent = send((*it)->getfd(), imsg.c_str(), imsg.length(), 0);
-				if (bytes_sent < 0) {
-					std::cerr << "Could not send" << std::endl;
-					return;
-				}
+			for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
+			{
+				if (*it != without)
+					send((*it)->getfd(), msg.c_str(), msg.length(), 0);
 			}
 		}
-
+		
 		std::string	getName() const
 		{
 			return (this->_name);

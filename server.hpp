@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/24 17:30:13 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/24 17:41:48 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -231,7 +231,7 @@ public:
 				removeUser(i);
 			else
 			{
-				std::string msg = ":127.0.0.1 001 " + this->_users[i].getNickName() + " :Welcome to the Internet Relay Network\r\n";
+				std::string msg = ":127.0.0.1 001 " + this->_users[i].getNickName() + " :\002Welcome to the Internet Relay Network\r\n";
 				int bytes_sent = send(this->_users[i].getfd(), msg.c_str(), msg.length(), 0);
 			}
 		}

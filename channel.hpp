@@ -6,7 +6,7 @@
 /*   By: nayache <nayache@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/10 14:32:28 by nayache           #+#    #+#             */
-/*   Updated: 2022/06/24 17:30:29 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/24 18:22:14 by nayache          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,8 @@ class Channel
 				//----RPL_TOPIC/RPL_NOTOPIC------
 				response = ":42-IRC 332 " + x->getNickName() + " " + this->_name + " :" + this->_topic + "\r\n";
 				send(x->getfd(), response.c_str(), response.length(), 0);
-		
+				saveTime(); //-----> save time to creation of topic
+				
 				//---MODE(facultatif)---		
 				response = ":42-IRC MODE " + this->_name + " +nt\r\n";
 				send(x->getfd(), response.c_str(), response.length(), 0);
@@ -70,7 +71,7 @@ class Channel
 			else
 			{
 				////----JOIN-----
-				response = ":" + x->getIdd() + " JOIN " + this->_name + "\r\n";
+				response = ":" + x->getId() + " JOIN " + this->_name + "\r\n";
 				sendToUsers(response, 0);
 			//	send(x->getfd(), response.c_str(), response.length(), 0);
 				
@@ -79,7 +80,9 @@ class Channel
 				send(x->getfd(), response.c_str(), response.length(), 0);
 
 				//-----RPL_WHOTIME------
-				response = ":42IRC 333 " + x->getNickName() + " " + this->_name + " " + this->_users[0]->getId() + "\r\n";
+				response = ":42IRC 333 " + x->getNickName() + " " + this->_name + " " + this->_users[0]->getId() + " " + this->_topicDate + "\r\n";
+				std::cout << this->_topicDate << std::endl;
+				send(x->getfd(), response.c_str(), response.length(), 0);
 
 				//----RPL_NAMEREPLY------
 				response = ":42IRC 353 " + x->getNickName() + " @ " + this->_name + " :";
@@ -127,6 +130,15 @@ class Channel
 			}
 		}
 		
+		void saveTime()
+		{
+			time_t now = time(NULL);
+			tm *gmtm = gmtime(&now);
+			std::stringstream tt;
+			tt << now;
+			this->_topicDate = tt.str();
+		}
+
 		std::string	getName() const
 		{
 			return (this->_name);
@@ -136,6 +148,7 @@ class Channel
 
 		std::string			_name;
 		std::string			_topic;
+		std::string			_topicDate;
 		std::vector<User*>	_users;
 
 };

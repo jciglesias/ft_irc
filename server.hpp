@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-/*   Updated: 2022/06/24 17:41:48 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/28 19:27:32 by nayache          ###   ########.fr       */
 //                                                                            //
 // ************************************************************************** //
 
@@ -44,25 +44,43 @@ private:
 	std::vector<Channel>	_channel;
 
 public:
-	void printChannels(int userIndex){
-		std::stringstream ss;
-		
-	//	ss << "\002====CHANNELS LIST====" << std::endl;
+	void list(int idx){
+		std::string response;
+		response = ":42-IRC 321 " + this->_users[idx].getNickName() + " Channel :Users Name\r\n";
+		send(this->_users[idx].getfd(), response.c_str(), response.length(), 0);
+
 		for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
 		{
-			ss << ":" << it->getName() << "\r\n";
-			break;
+			response = ":42-IRC 322 " + this->_users[idx].getNickName() + " " + it->getName() + " " + it->getSize() + " :" + it->getTopic() + "\r\n"; 
+			send(this->_users[idx].getfd(), response.c_str(), response.length(), 0);
 		}
-		
-		ss << ":End of Channel list\r\n";
-		std::string response = ss.str();
-		int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
-		if (bytes_sent < 0){
-			std::cerr << "could not send channels list\n";
-			return;
-		}
+		response = ":42-IRC 323 " + this->_users[idx].getNickName() + " :End of LIST\r\n"; 
+		send(this->_users[idx].getfd(), response.c_str(), response.length(), 0);
 	}
 	
+	User* getUser(std::string nick)
+	{
+		for (std::vector<User>::iterator it = this->_users.begin(); it != this->_users.end(); it++)
+		{
+			if (it->getNickName() == nick)
+				return (&(*it));
+		}
+		return (NULL);
+	}
+
+	void sendMsg(User* x, std::string nick, std::string msg)
+	{
+		User* target;
+
+		target = getUser(nick);
+		if (target == NULL)
+			return;
+
+		std::string response = ":" + x->getId() + " PRIVMSG " + nick + " :" + msg + "\r\n";
+		std::cout << response << std::endl;
+		send(target->getfd(), response.c_str(), response.length(), 0);
+	}
+
 	bool allowChannelName(std::string name){
 		if (name[0] != '&' && name[0] != '#')
 			return (false);
@@ -245,8 +263,7 @@ public:
 				}
 			}
 			else if (!strncmp(_buffer, "LIST", 4)){
-				std::cout << _buffer << std::endl;
-				printChannels(i);
+				list(i);
 			}
 			else if (!strncmp(_buffer, "JOIN #", 6)){
 				std::string nameChannel(getNameChannel(_buffer));
@@ -262,43 +279,47 @@ public:
 
 				return (1);
 			}
-			else if (!strncmp(_buffer, "PART #", 6))
+			else
 			{
-				std::stringstream ss;
-				std::string msg;
-				std::string buf(_buffer);
-				char* str = const_cast<char *>(buf.c_str());
-				char* delimit  = strchr(str + 6, ' ');
-
-				*delimit = '\0';
-				std::string channelName(str + 5);
-				int idx = getIndexChannel(channelName);
-				if (idx == -1)
+				if (!strncmp(_buffer, "PRIVMSG ", 8)) // a modifier(essayer de split les args et voir si erreur de format msg)
 				{
-					ss << "you are not in " << channelName << std::endl;
-					msg = ss.str();
-					int bytes_sent = send(this->_users[i].getfd(), msg.c_str(), msg.length(), 0);
-					if (bytes_sent < 0) {
-						std::cerr << "Could not send" << std::endl;
-					return (1);
+					if (!strncmp(_buffer, "PRIVMSG #", 9)) //msg to channel
+					{
+						char* str = const_cast<char *>(_buffer);
+						char* delimit  = strchr(str + 8, ' ');
+						*delimit = '\0';
+
+						delimit = strchr(delimit + 1, ':');
+						*delimit = '\0';
+		  				std::string channel(str + 8);
+						int idx = getIndexChannel(channel);
+						if (idx > -1)
+						{
+							char *end = strchr(delimit + 1, '\r');
+							*end = '\0';
+							std::string msg(delimit + 1);
+							this->_channel[idx].privMsg(msg, &(this->_users[i]));
+						}
+					}
+					else //msg to user
+					{
+						char* str = const_cast<char *>(_buffer);
+						char* delimit  = strchr(str + 8, ' ');
+						if (delimit == NULL)
+							std::cerr << "error format PRIVMSG\n";
+						*delimit = '\0';
+						
+						std::string nick(str + 8);
+						str = strchr(delimit + 1, ':');
+						delimit = strchr(str + 1, '\r');
+						*delimit = '\0';
+						if (delimit == NULL)
+							std::cerr << "error format PRIVMSG\n";
+						std::string msg(str + 1);
+						sendMsg(&(this->_users[i]), nick, msg);
 					}
 				}
-				else
-				{
-					msg = delimit + 2;
-					leaveChannel(&(this->_users[i]), msg);
-				}
-				
 			}
-			else{ 
-	  		std::stringstream stream;
-			 // if (this->_users[i].getOperator() == true)
-			//	  stream << "(Ops)";
-		  		stream << _buffer << std::endl; // to channel
-		  		std::string msg = stream.str();
-				int idx = getIndexChannel(this->_users[i].getChannel());
-				this->_channel[idx].sendToUsers(msg, 0);
-				}
    	}
 		return 1;
 	}

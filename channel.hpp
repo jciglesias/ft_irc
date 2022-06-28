@@ -6,7 +6,7 @@
 /*   By: nayache <nayache@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/10 14:32:28 by nayache           #+#    #+#             */
-/*   Updated: 2022/06/24 18:22:14 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/28 19:12:35 by nayache          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ class Channel
 			this->_users.push_back(x);
 			x->setChannel(this->_name);
 			
-			if (this->_users.size() == 1) // si je suis le 1er du channel je suis le OPS
+			if (this->_users.size() == 1) // si je suis le 1er du channel je suis OPS
 				this->_users[0]->setOperator(true);
 			else
 				x->setOperator(false);
@@ -122,12 +122,18 @@ class Channel
 		}
 
 		void sendToUsers(std::string msg, User* without) {
-
 			for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
 			{
 				if (*it != without)
 					send((*it)->getfd(), msg.c_str(), msg.length(), 0);
 			}
+		}
+
+		void privMsg(std::string msg, User* client)
+		{
+			std::string response = ":" + client->getId() + " PRIVMSG " + this->_name + " :" + msg + "\r\n";
+			std::cout << response << std::endl;
+			sendToUsers(response, client);
 		}
 		
 		void saveTime()
@@ -139,9 +145,13 @@ class Channel
 			this->_topicDate = tt.str();
 		}
 
-		std::string	getName() const
+		std::string	getName() const { return (this->_name); }
+		std::string	getTopic() const { return (this->_topic); }
+		std::string getSize() const
 		{
-			return (this->_name);
+			std::stringstream ss;
+			ss << this->_users.size();
+			return (ss.str());
 		}
 
 	private:

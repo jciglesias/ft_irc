@@ -24,9 +24,7 @@
 # include <unistd.h>
 # include "user.hpp"
 # include "channel.hpp"
-
-# define GREEN "\e[32m"
-# define RESET "\e[0m"
+# include "color.hpp"
 
 # define BUFFERLEN 1024
 
@@ -46,7 +44,7 @@ private:
 public:
 	Server(int port, int sock);
 
-	~Server(){}
+  ~Server(){}
 	void addUser();
 	void removeUser(int indexUser);
 	std::string getline(int fd);

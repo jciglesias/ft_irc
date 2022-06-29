@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/14 10:51:42 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/14 11:05:08 by jiglesia         ###   ########.fr       //
+//   Updated: 2022/06/17 18:02:19 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -15,23 +15,29 @@
 void Server::printChannels(int userIndex){
 	std::stringstream ss;
 
-	for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++)
-		ss << "#" << '[' << it->getName() << ']' << std::endl;
+	for (std::vector<Channel>::iterator it = this->_channel.begin(); it != this->_channel.end(); it++){
+		ss << ":" << it->getName() << "\r\n";
+		break;
+	}
 
+	ss << ":End of Channel list\r\n";
 	std::string response = ss.str();
 	int bytes_sent = send(this->_users[userIndex].getfd(), response.c_str(), response.length(), 0);
 	if (bytes_sent < 0){
 		std::cerr << "could not send channels list\n";
-		return;
+		return ;
 	}
 }
 
 bool Server::allowChannelName(std::string name){
-	if (name.size() == 1)
-		return (name[0] >= '0' && name[0] <= '9');
+	if (name[0] != '&' && name[0] != '#')
+		return (false);
+	if (name.size() == 2)
+		return (name[1] >= '0' && name[1] <= '9');
 
-	return ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'));
+	return ((name[1] >= 'a' && name[1] <= 'z') || (name[1] >= 'A' && name[1] <= 'Z'));
 }
+
 
 int Server::findChannel(std::string name){
 	int i = 0;
@@ -45,15 +51,15 @@ int Server::findChannel(std::string name){
 
 std::string Server::getNameChannel(std::string buf){
 	char*	str = const_cast<char *>(buf.c_str());
-	char *delimit = strchr(str + 6, ' ');
+	char *delimit = strchr(str + 5, ' ');
 	if (delimit != NULL)
 		*delimit = '\0';
 	else{
-		char *delimit = strchr(str + 6, '\r');
+		char *delimit = strchr(str + 5, '\r');
 		if (delimit != NULL)
 			*delimit = '\0';
 	}
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < 5; i++)
 		str++;
 
 	std::string tmp(str);
@@ -91,13 +97,13 @@ int	Server::getIndexChannel(std::string name){
 		return (-1);
 	}
 
-void Server::leaveChannel(User* x){
+void Server::leaveChannel(User* x, std::string msg){
 	std::string nameChannel = x->getChannel();
-	this->_channel[findChannel(nameChannel)].deleteUser(x);
+	this->_channel[findChannel(nameChannel)].deleteUser(x, msg);
 	x->setChannel("");
 
 	std::stringstream ss;
-	ss << "You are leaved " << nameChannel << " !" << std::endl;
+	ss << "You are leaving " << nameChannel << " !" << std::endl;
 	std::string out = ss.str();
 	int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
 	if (bytes_sent < 0)
@@ -109,7 +115,7 @@ void Server::joinChannel(User* x, int indexChannel){
 	if (nameChannel == x->getChannel())
 	{
 		std::stringstream ss;
-		ss << "You are already in " << "#" << nameChannel << " channel!" << std::endl;
+		ss << "You are already in " << nameChannel << " channel!" << std::endl;
 		std::string out = ss.str();
 		int bytes_sent = send(x->getfd(), out.c_str(), out.length(), 0);
 		if (bytes_sent < 0)
@@ -117,7 +123,7 @@ void Server::joinChannel(User* x, int indexChannel){
 		return;
 	}
 
-	leaveChannel(x);
+	leaveChannel(x, "");
 	this->_channel[indexChannel].addUser(x);
 }
 

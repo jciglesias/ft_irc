@@ -6,7 +6,7 @@
 //   By: jiglesia <jiglesia@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2022/06/08 16:28:11 by jiglesia          #+#    #+#             //
-//   Updated: 2022/06/14 11:14:17 by jiglesia         ###   ########.fr       //
+//   Updated: 2022/06/17 15:08:21 by jiglesia         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -51,6 +51,7 @@ public:
 	void removeUser(int indexUser);
 	std::string getline(int fd);
 	int checkfd(int i);
+	int checkCmd(std::string line, int i);
 	int run();
 /*
 ** Channel functions
@@ -61,7 +62,7 @@ public:
 	std::string getNameChannel(std::string buf);
 	void getNames(std::string buffer, int index);
 	int	getIndexChannel(std::string name);
-	void leaveChannel(User* x);
+	void leaveChannel(User* x, std::string msg);
 	void joinChannel(User* x, int indexChannel);
 	bool occurName(User& x);
 };

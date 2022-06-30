@@ -6,7 +6,7 @@
 /*   By: nayache <nayache@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/10 14:32:28 by nayache           #+#    #+#             */
-/*   Updated: 2022/06/28 19:12:35 by nayache          ###   ########.fr       */
+/*   Updated: 2022/06/30 15:57:29 by nayache          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,20 +102,41 @@ class Channel
 			}
 		}
 		
-		void deleteUser(User* x, std::string msg)
+		void deleteUser(std::string msg, User* x)
 		{
-			std::vector<User*>::iterator idxUser = userExist(x->getUserName());
-			if (idxUser == this->_users.end())
+			std::string response;
+			std::vector<User*>::iterator it = getPosition(x->getNickName());
+			if (it == this->_users.end())
+			{
+				response = ":42-IRC 442 " + x->getNickName() + " " + this->_name + " :You are not on tchat channel\r\n";
+				send(x->getfd(), response.c_str(), response.length(), 0);
 				return;
-			
-			this->_users.erase(idxUser);
+			}
+			response = ":" + x->getId() + " PART " + this->_name;
+			if (msg != "Leaving")
+				response += " :" + msg;
+			response += "\r\n";
+
+			//send(x->getfd(), response.c_str(), response.length(), 0);
+			sendToUsers(response, 0);
+			this->_users.erase(it);
 		}
 
-		std::vector<User*>::iterator userExist(std::string userName)
+		bool userExist(std::string nickName)
 		{
 			for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
 			{
-				if (userName == (*it)->getUserName())
+				if (nickName == (*it)->getNickName())
+					return (true);
+			}
+			return (false);
+		}
+		
+		std::vector<User*>::iterator getPosition(std::string nickName)
+		{
+			for (std::vector<User*>::iterator it = _users.begin(); it != _users.end(); it++)
+			{
+				if (nickName == (*it)->getNickName())
 					return (it);
 			}
 			return (this->_users.end());
